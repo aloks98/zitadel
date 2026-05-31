@@ -1,18 +1,17 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { handleServerActionResponse } from "@/lib/client-utils";
 import { sendLoginname } from "@/lib/server/loginname";
 import { LoginSettings } from "@zitadel/proto/zitadel/settings/v2/login_settings_pb";
+import { Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-import { Alert } from "./alert";
 import { AutoSubmitForm } from "./auto-submit-form";
-import { BackButton } from "./back-button";
-import { Button, ButtonVariants } from "./button";
-import { TextInput } from "./input";
-import { Spinner } from "./spinner";
 import { Translated } from "./translated";
 
 type Inputs = {
@@ -42,13 +41,10 @@ export function UsernameForm({
 }: Props) {
   const { register, handleSubmit, formState } = useForm<Inputs>({
     mode: "onChange",
-    defaultValues: {
-      loginName: loginName ? loginName : "",
-    },
+    defaultValues: { loginName: loginName ?? "" },
   });
 
   const t = useTranslations("loginname");
-
   const router = useRouter();
 
   const [loading, setLoading] = useState<boolean>(false);
@@ -58,7 +54,6 @@ export function UsernameForm({
   const submitLoginName = useCallback(
     async (values: Inputs, organization?: string) => {
       setLoading(true);
-
       try {
         const res = await sendLoginname({
           loginName: values.loginName,
@@ -68,7 +63,6 @@ export function UsernameForm({
           suffix,
           ignoreUnknownUsernames: loginSettings?.ignoreUnknownUsernames,
         });
-
         handleServerActionResponse(res, router, setSamlData, setError);
         return res;
       } catch {
@@ -82,7 +76,6 @@ export function UsernameForm({
 
   useEffect(() => {
     if (submit && loginName) {
-      // When we navigate to this page, we always want to be redirected if submit is true and the parameters are valid.
       submitLoginName({ loginName }, organization);
     }
   }, [submit, loginName, organization, submitLoginName]);
@@ -99,63 +92,58 @@ export function UsernameForm({
   return (
     <>
       {samlData && <AutoSubmitForm url={samlData.url} fields={samlData.fields} />}
-      <form className="w-full">
-        <div className="">
-          <TextInput
-            type="text"
-            autoComplete="username"
-            autoCapitalize="none"
-            autoCorrect="off"
-            spellCheck={false}
-            autoFocus
-            {...register("loginName", { required: t("required.loginName") })}
-            label={inputLabel}
-            data-testid="username-text-input"
-            suffix={suffix}
-          />
-          {allowRegister && (
-            <button
-              className="hover:text-primary-light-500 dark:hover:text-primary-dark-500 text-sm transition-all"
-              onClick={() => {
-                const registerParams = new URLSearchParams();
-                if (organization) {
-                  registerParams.append("organization", organization);
-                }
-                if (requestId) {
-                  registerParams.append("requestId", requestId);
-                }
+      <form className="w-full" onSubmit={handleSubmit((values) => submitLoginName(values, organization))}>
+        <Label htmlFor="loginName">{inputLabel}</Label>
+        <Input
+          id="loginName"
+          type="text"
+          className="h-12 text-[15px]"
+          autoComplete="username"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+          autoFocus
+          data-testid="username-text-input"
+          {...register("loginName", { required: t("required.loginName") })}
+        />
 
-                router.push("/register?" + registerParams);
-              }}
+        {error && (
+          <div
+            className="text-destructive border-destructive bg-destructive/10 mt-3 border-l-2 px-3 py-2 text-sm"
+            data-testid="error"
+          >
+            {error}
+          </div>
+        )}
+
+        <Button
+          data-testid="submit-button"
+          type="submit"
+          className="mt-6 h-12 w-full text-[13px] font-extrabold tracking-[0.05em] uppercase"
+          disabled={loading || !formState.isValid}
+        >
+          {loading && <Loader2 className="animate-spin" />}
+          <Translated i18nKey="submit" namespace="loginname" />
+        </Button>
+
+        {allowRegister && (
+          <p className="text-muted-foreground mt-5 text-center text-sm">
+            <button
               type="button"
               disabled={loading}
               data-testid="register-button"
+              className="text-accent font-semibold hover:underline"
+              onClick={() => {
+                const params = new URLSearchParams();
+                if (organization) params.append("organization", organization);
+                if (requestId) params.append("requestId", requestId);
+                router.push("/register?" + params);
+              }}
             >
               <Translated i18nKey="register" namespace="loginname" />
             </button>
-          )}
-        </div>
-
-        {error && (
-          <div className="py-4" data-testid="error">
-            <Alert>{error}</Alert>
-          </div>
+          </p>
         )}
-        <div className="mt-4 flex w-full flex-row items-center">
-          <BackButton data-testid="back-button" />
-          <span className="flex-grow"></span>
-          <Button
-            data-testid="submit-button"
-            type="submit"
-            className="self-end"
-            variant={ButtonVariants.Primary}
-            disabled={loading || !formState.isValid}
-            onClick={handleSubmit((e) => submitLoginName(e, organization))}
-          >
-            {loading && <Spinner className="mr-2 h-5 w-5" />}
-            <Translated i18nKey="submit" namespace="loginname" />
-          </Button>
-        </div>
       </form>
     </>
   );

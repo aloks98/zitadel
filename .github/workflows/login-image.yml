@@ -1,0 +1,61 @@
+# Build the Zitadel Login UI image from this fork and push it to GHCR.
+# Build path is upstream's documented Nx target (apps/login/AGENTS.md):
+#   `pnpm nx run @zitadel/login:pack` -> local image zitadel/zitadel-login:local
+# which we retag + push. Tag is version-matched to core (UPSTREAM_VERSION).
+name: login-image
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [nexus]
+    paths:
+      - "apps/login/**"
+      - "packages/**"
+      - "proto/**"
+      - ".github/workflows/login-image.yml"
+permissions:
+  contents: read
+  packages: write
+env:
+  IMAGE: ghcr.io/aloks98/zitadel-login
+  UPSTREAM_VERSION: "4.14.0"
+jobs:
+  build-push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - name: Enable corepack (pnpm from packageManager field)
+        run: corepack enable
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build login Docker image (Nx pack)
+        run: pnpm nx run @zitadel/login:pack
+      - name: Boot smoke (image starts and stays up)
+        run: |
+          set -euo pipefail
+          docker run -d --name login-smoke \
+            -e ZITADEL_API_URL=http://127.0.0.1:8080 \
+            -e ZITADEL_TLS_ENABLED=false \
+            -e NEXT_PUBLIC_BASE_PATH=/ui/v2/login \
+            -p 3000:3000 zitadel/zitadel-login:local
+          sleep 12
+          docker logs login-smoke 2>&1 | tail -25
+          # gate: a build/dep break crash-loops; a healthy image is still Running.
+          test "$(docker inspect -f '{{.State.Running}}' login-smoke)" = "true"
+          docker rm -f login-smoke
+          echo "boot smoke OK (login image starts cleanly)"
+      - name: Log in to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+      - name: Tag and push
+        run: |
+          set -euo pipefail
+          TAG="${UPSTREAM_VERSION}-nexus.${{ github.run_number }}"
+          MOVING="${UPSTREAM_VERSION}-nexus"
+          docker tag zitadel/zitadel-login:local "${IMAGE}:${TAG}"
+          docker tag zitadel/zitadel-login:local "${IMAGE}:${MOVING}"
+          docker push "${IMAGE}:${TAG}"
+          docker push "${IMAGE}:${MOVING}"
+          echo "PUSHED=${IMAGE}:${TAG}" >> "$GITHUB_STEP_SUMMARY"
+          echo "pushed ${IMAGE}:${TAG} and ${IMAGE}:${MOVING}"

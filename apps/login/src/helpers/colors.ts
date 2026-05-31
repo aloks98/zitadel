@@ -30,17 +30,18 @@ export type ColorMap = {
   [_key in MapName]: Color[];
 };
 
-export const DARK_PRIMARY = "#eeeeee";
-export const PRIMARY = "#5469d4";
+// nexus redesign (Phase 2): pinned crimson + amber + warm-dark palette.
+export const DARK_PRIMARY = "#e11d48"; // crimson (CTA)
+export const PRIMARY = "#e11d48";
 
-export const DARK_WARN = "#ff3b5b";
-export const WARN = "#cd3d56";
+export const DARK_WARN = "#ef4444"; // red (errors)
+export const WARN = "#ef4444";
 
-export const DARK_BACKGROUND = "#252526";
-export const BACKGROUND = "#fafafa";
+export const DARK_BACKGROUND = "#170f0d"; // warm-dark card surface
+export const BACKGROUND = "#170f0d";
 
-export const DARK_TEXT = "#ffffff";
-export const TEXT = "#000000";
+export const DARK_TEXT = "#f4ece8";
+export const TEXT = "#f4ece8";
 
 export type LabelPolicyColors = {
   backgroundColor: string;
@@ -69,19 +70,12 @@ type BrandingColors = {
 };
 
 export function setTheme(document: any, policy?: BrandingSettings) {
+  // nexus redesign: pin the palette; ignore the instance branding colors
+  // (single homelab instance — the fork is the source of truth for the look).
+  void policy;
   const lP: BrandingColors = {
-    lightTheme: {
-      backgroundColor: policy?.lightTheme?.backgroundColor || BACKGROUND,
-      fontColor: policy?.lightTheme?.fontColor || TEXT,
-      primaryColor: policy?.lightTheme?.primaryColor || PRIMARY,
-      warnColor: policy?.lightTheme?.warnColor || WARN,
-    },
-    darkTheme: {
-      backgroundColor: policy?.darkTheme?.backgroundColor || DARK_BACKGROUND,
-      fontColor: policy?.darkTheme?.fontColor || DARK_TEXT,
-      primaryColor: policy?.darkTheme?.primaryColor || DARK_PRIMARY,
-      warnColor: policy?.darkTheme?.warnColor || DARK_WARN,
-    },
+    lightTheme: { backgroundColor: BACKGROUND, fontColor: TEXT, primaryColor: PRIMARY, warnColor: WARN },
+    darkTheme: { backgroundColor: DARK_BACKGROUND, fontColor: DARK_TEXT, primaryColor: DARK_PRIMARY, warnColor: DARK_WARN },
   };
 
   const dark = computeMap(lP, true);
@@ -163,7 +157,7 @@ export function computeMap(branding: BrandingColors, dark: boolean): ColorMap {
     primary: computeColors(dark ? branding.darkTheme.primaryColor : branding.lightTheme.primaryColor),
     warn: computeColors(dark ? branding.darkTheme.warnColor : branding.lightTheme.warnColor),
     text: computeColors(dark ? branding.darkTheme.fontColor : branding.lightTheme.fontColor),
-    link: computeColors(dark ? branding.darkTheme.fontColor : branding.lightTheme.fontColor),
+    link: computeColors(dark ? "#fbbf24" : "#f59e0b"), // nexus: amber links / passkey
   };
 }
 

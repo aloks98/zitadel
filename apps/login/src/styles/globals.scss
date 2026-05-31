@@ -48,3 +48,11 @@ html {
     background-position: -200% 0;
   }
 }
+
+/* nexus redesign: abstract grid background for the login shell */
+.ztdl-grid-bg {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+  background-size: 34px 34px;
+}
